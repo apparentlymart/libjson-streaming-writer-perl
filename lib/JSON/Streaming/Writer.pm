@@ -9,6 +9,8 @@ use B;
 
 use constant ROOT_STATE => {};
 
+our $VERSION = '0.01';
+
 sub for_stream {
     my ($class, $fh) = @_;
 
@@ -170,10 +172,21 @@ sub add_value {
     }
     elsif ($type eq 'HASH') {
         $self->start_object();
-        foreach my $k (keys %$value) {
+        foreach my $k (sort keys %$value) {
             $self->add_property($k, $value->{$k});
         }
         $self->end_object();
+    }
+    elsif ($type eq 'SCALAR') {
+        if ($$value eq '1') {
+            $self->add_boolean(1);
+        }
+        elsif ($$value eq '0') {
+            $self->add_boolean(0);
+        }
+        else {
+            Carp::croak("Don't know what to generate for $value");
+        }
     }
     else {
         Carp::croak("Don't know what to generate for $value");
@@ -186,6 +199,11 @@ sub add_property {
     $self->start_property($key);
     $self->add_value($value);
     $self->end_property();
+}
+
+sub intentionally_ending_early {
+    my ($self) = @_;
+    $self->{intentionally_ending_early} = 1;
 }
 
 sub _print {
@@ -285,9 +303,7 @@ sub _json_string {
 sub DESTROY {
     my ($self) = @_;
 
-    if ($self->_state != ROOT_STATE) {
-        use Data::Dumper;
-        print STDERR Data::Dumper::Dumper($self->_state);
+    if ($self->_state != ROOT_STATE && ! $self->{intentionally_ending_early}) {
         warn "JSON::Streaming::Writer object was destroyed with incomplete output";
     }
 }
@@ -314,11 +330,9 @@ JSON::Streaming::Writer - Generate JSON output in a streaming manner
     $jsonw->start_array();
     $jsonw->add_simple_item("anotherStringValue");
     $jsonw->add_simple_item(10);
-    $jsonw->start_item();
     $jsonw->start_object();
     # No items; this object is empty
     $jsonw->end_object();
-    $jsonw->end_item();
     $jsonw->end_array();
 
 =head1 DESCRIPTION
@@ -334,6 +348,95 @@ structures to be memory-resident, and also allows parts of the output
 to be made available to a streaming-capable JSON parser while
 the rest of the output is being generated, which may improve
 performance of JSON-based network protocols.
+
+=head1 RAW API
+
+The raw API allows the caller precise control over the generated
+data structure by providing explicit methods for each fundamental JSON
+construct.
+
+As a general rule, methods with names starting with C<start_> and C<end_>
+methods wrap a multi-step construct and must be used symmetrically, while
+methods with names starting with C<add_> stand alone and generate output
+in a single step.
+
+The raw API methods are described below
+
+=head2 start_object, end_object
+
+These methods delimit a JSON object. C<start_object> can be called
+as the first method call on a writer object to produce a top-level
+object, or it can be called in any state where a value is expected
+to produce a nested object.
+
+JSON objects contain properties, so only property-related methods
+may be used while in the context of an object.
+
+=head2 start_array, end_array
+
+These methods delimit a JSON array. C<start_array> can be called
+as the first method call on a writer object to produce a top-level
+array, or it can be called in any state where a value is expected
+to produce a nested array.
+
+JSON arrays contain properties, so only value-producing methods
+may be used while in the context of an array.
+
+=head2 start_property($name), end_property
+
+These methods delimit a property or member of a JSON object.
+C<start_property> may be called only when in the context of an
+object. The C<$name> parameter, a string, gives the name that
+the generated property will have.
+
+Only value-producing methods may be used while in the context
+of a property.
+
+Since a property can contain only one value, only a single
+value-producing method may be called between a pair of
+C<start_property> and C<end_property> calls.
+
+=head2 add_string($value)
+
+Produces a JSON string with the given value.
+
+=head2 add_number($value)
+
+Produces a JSON number whose value is Perl's numeric interpretation of the given value.
+
+=head2 add_boolean($value)
+
+Produces a JSON boolean whose value is Perl's boolean interpretation of the given value.
+
+=head2 add_null
+
+Produces a JSON C<null>.
+
+=head1 DWIM API
+
+The DWIM API allows you to provide normal Perl data structures and have the library
+figure out a sensible JSON representation for them. You can mix use of the raw
+and DWIM APIs to allow you to exercise fine control where required but use
+a simpler API for normal cases.
+
+=head2 add_value($value)
+
+Produces a JSON value representing the given Perl value. This library can handle
+Perl strings, integers (i.e. scalars that have most recently been used as numbers),
+references to the values 0 and 1 representing booleans and C<undef> representing
+a JSON C<null>. It can also accept ARRAY and HASH refs that contain such values
+and produce JSON array and object values recursively, much like a non-streaming
+JSON producer library would do.
+
+This method is a wrapper around the corresponding raw API calls, so the error
+messages it generates will often refer to the underlying raw API.
+
+=head2 add_property($name, $value)
+
+Produces a property inside a JSON object whose value is derived from the provided
+value using the same mappings as used by C<add_value>. This can only be used
+inside the context of an object, and is really just a wrapper around a C<start_property>,
+C<add_value>, C<end_property> sequence for convenience.
 
 =head1 INTERNALS
 
