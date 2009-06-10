@@ -9,7 +9,7 @@ use B;
 
 use constant ROOT_STATE => {};
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub for_stream {
     my ($class, $fh) = @_;
