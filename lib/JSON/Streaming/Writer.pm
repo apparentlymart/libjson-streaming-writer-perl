@@ -488,6 +488,18 @@ value using the same mappings as used by C<add_value>. This can only be used
 inside the context of an object, and is really just a wrapper around a C<start_property>,
 C<add_value>, C<end_property> sequence for convenience.
 
+=head1 OPTIONS
+
+=head2 Pretty Output
+
+This library can optionally pretty-print the JSON string it produces. To enable this,
+call the C<pretty_output> method with a true value as its first argument.
+
+You can enable and disable pretty-printing during output, though if you do the
+results are likely to be sub-optimal as the additional whitespace may not be
+generated where you'd expect. In particular, where the whitespace is generated
+may change in future versions.
+
 =head1 INTERNALS
 
 Internally this library maintains a simple state stack that allows
