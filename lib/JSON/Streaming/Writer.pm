@@ -20,6 +20,8 @@ sub for_stream {
     $self->{state} = ROOT_STATE;
     $self->{state_stack} = [];
     $self->{used} = 0;
+    $self->{pretty} = 0;
+    $self->{indent_level} = 0;
 
     return $self;
 }
@@ -37,6 +39,16 @@ sub for_stdout {
     return $class->for_stream(\*STDOUT);
 }
 
+sub pretty_output {
+    my $self = shift;
+
+    if (@_) {
+        $self->{pretty} = $_[0] ? 1 : 0;
+    }
+
+    $self->{pretty};
+}
+
 sub start_object {
     my ($self) = @_;
 
@@ -46,6 +58,7 @@ sub start_object {
     $self->_print("{");
     my $state = $self->_push_state();
     $state->{in_object} = 1;
+    $self->_indent();
     return undef;
 }
 
@@ -53,8 +66,11 @@ sub end_object {
     my ($self) = @_;
 
     Carp::croak("Can't end_object here: not in an object") unless $self->_in_object;
+    $self->_outdent();
+    $self->_make_end_block();
     $self->_pop_state();
     $self->_print("}");
+    $self->_print("\n") if $self->_state == ROOT_STATE && $self->pretty_output;
 
     $self->_state->{made_value} = 1 unless $self->_state == ROOT_STATE;
 }
@@ -90,6 +106,7 @@ sub start_array {
     $self->_make_separator();
     $self->_print("[");
     my $state = $self->_push_state();
+    $self->_indent();
     $state->{in_array} = 1;
     return undef;
 }
@@ -98,8 +115,11 @@ sub end_array {
     my ($self) = @_;
 
     Carp::croak("Can't end_array here: not in an array") unless $self->_in_array;
+    $self->_outdent();
+    $self->_make_end_block();
     $self->_pop_state();
     $self->_print("]");
+    $self->_print("\n") if $self->_state == ROOT_STATE && $self->pretty_output;
 
     $self->_state->{made_value} = 1 unless $self->_state == ROOT_STATE;
 }
@@ -278,6 +298,36 @@ sub _can_start_property {
 
 sub _make_separator {
     $_[0]->_print(",") if $_[0]->_made_value;
+    if ($_[0]->pretty_output) {
+        if ($_[0]->_in_property) {
+            $_[0]->_print(" ");
+        }
+        else {
+            $_[0]->_print("\n");
+            $_[0]->_make_indent();
+        }
+    }
+}
+
+sub _make_end_block {
+    return unless $_[0]->pretty_output;
+
+    if ($_[0]->_made_value) {
+        $_[0]->_print("\n");
+        $_[0]->_make_indent();
+    }
+}
+
+sub _make_indent {
+    $_[0]->_print("    " x $_[0]->{indent_level});
+}
+
+sub _indent {
+    $_[0]->{indent_level}++;
+}
+
+sub _outdent {
+    $_[0]->{indent_level}--;
 }
 
 my %esc = (
