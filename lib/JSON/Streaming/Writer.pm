@@ -509,4 +509,9 @@ it has already generated.
 The state stack means that it will use more memory for deeper
 data structures.
 
+=head1 LICENSE
 
+Copyright 2009 Martin Atkins <mart@degeneration.co.uk>.
+
+This program is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
