@@ -366,24 +366,26 @@ JSON::Streaming::Writer - Generate JSON output in a streaming manner
 
 =head1 SYNOPSIS
 
-    my $jsonw = JSON::Streaming::Writer->for_stream($fh)
+    my $jsonw = JSON::Streaming::Writer->for_stream($fh);
     $jsonw->start_object();
-    $jsonw->add_simple_property("someName" => "someValue");
-    $jsonw->add_simple_property("someNumber" => 5);
+    $jsonw->add_property("someName" => "someValue");
+    $jsonw->add_property("someNumber" => 5);
     $jsonw->start_property("someObject");
     $jsonw->start_object();
-    $jsonw->add_simple_property("someOtherName" => "someOtherValue");
-    $jsonw->add_simple_property("someOtherNumber" => 6);
+    $jsonw->add_property("someOtherName" => "someOtherValue");
+    $jsonw->add_property("someOtherNumber" => 6);
     $jsonw->end_object();
     $jsonw->end_property();
     $jsonw->start_property("someArray");
     $jsonw->start_array();
-    $jsonw->add_simple_item("anotherStringValue");
-    $jsonw->add_simple_item(10);
+    $jsonw->add_value("anotherStringValue");
+    $jsonw->add_value(10);
     $jsonw->start_object();
     # No items; this object is empty
     $jsonw->end_object();
     $jsonw->end_array();
+    $jsonw->end_property();
+    $jsonw->end_object();
 
 =head1 DESCRIPTION
 
